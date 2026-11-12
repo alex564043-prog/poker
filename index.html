@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>争上游 / 跑得快（Chinese Poker）</title>
+<style>
+  :root {
+    --bg-felt: #14532d;
+    --bg-felt-dark: #0b331b;
+    --bg-panel: rgba(15, 23, 42, 0.85);
+    --text-main: #f8fafc;
+    --text-muted: #cbd5e1;
+    --accent: #f59e0b;
+    --accent-hover: #d97706;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --card-bg: #ffffff;
+    --card-border: #cbd5e1;
+    --red-suit: #dc2626;
+    --black-suit: #0f172a;
+  }
+
+  * {
+    box-sizing: border-box;
+    user-select: none;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Heiti SC", sans-serif;
+    background: radial-gradient(circle at center, var(--bg-felt) 0%, var(--bg-felt-dark) 100%);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  header {
+    background: rgba(0, 0, 0, 0.45);
+    padding: 10px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .title-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .title-area h1 {
+    margin: 0;
+    font-size: 1.2rem;
+    letter-spacing: 0.5px;
+    color: #fde68a;
+  }
+
+  .badge {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid var(--accent);
+    color: #fde68a;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  select, button {
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  select {
+    background: #1e293b;
+    color: #f8fafc;
+  }
+
+  button.btn-primary {
+    background: var(--accent);
+    color: #111827;
+    font-weight: 700;
+    border: none;
+  }
+
+  button.btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+  }
+
+  button.btn-secondary {
+    background: #334155;
+    color: #f8fafc;
+  }
+
+  button.btn-secondary:hover:not(:disabled) {
+    background: #475569;
+  }
+
+  button.btn-danger {
+    background: #991b1b;
+    color: #fecaca;
+    border-color: #ef4444;
+  }
+
+  button.btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+  }
+
+  button:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 16px 18px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    gap: 10px;
+  }
+
+  /* Opponents Row */
+  .opponents-row {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .player-box {
+    background: var(--bg-panel);
+    border: 2px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    padding: 10px 14px;
+    min-width: 195px;
+    text-align: center;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .player-box.active-turn {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.45);
+  }
+
+  .player-box.disqualified {
+    opacity: 0.55;
+    border-color: var(--danger);
+    background: rgba(69, 10, 10, 0.75);
+  }
+
+  .player-name {
+    font-weight: 700;
+    font-size: 0.98rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .leader-tag {
+    background: var(--accent);
+    color: #111827;
+    font-size: 0.72rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+  }
+
+  .dq-tag {
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.72rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  .card-count {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .mini-cards {
+    display: flex;
+    justify-content: center;
+    height: 28px;
+    margin-bottom: 4px;
+  }
+
+  .mini-card-back {
+    width: 18px;
+    height: 26px;
+    background: repeating-linear-gradient(
+      45deg,
+      #1d4ed8,
+      #1d4ed8 3px,
+      #1e3a8a 3px,
+      #1e3a8a 6px
+    );
+    border: 1px solid #93c5fd;
+    border-radius: 3px;
+    margin-left: -10px;
+  }
+  .mini-card-back:first-child {
+    margin-left: 0;
+  }
+
+  .last-action {
+    font-size: 0.82rem;
+    color: #fde68a;
+    min-height: 18px;
+  }
+
+  /* Center Table Area */
+  .table-center {
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px dashed rgba(255, 255, 255, 0.22);
+    border-radius: 14px;
+    padding: 14px 16px;
+    min-height: 185px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+  }
+
+  .status-banner {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 0.92rem;
+    color: #fef3c7;
+    text-align: center;
+  }
+
+  .table-play-info {
+    font-size: 0.88rem;
+    color: #e2e8f0;
+  }
+
+  .played-cards-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    min-height: 96px;
+  }
+
+  .discard-divider {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    border-left: 1px dashed #64748b;
+    padding-left: 8px;
+    margin-left: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Playing Cards */
+  .card {
+    width: 66px;
+    height: 94px;
+    background: var(--card-bg);
+    border: 1.5px solid var(--card-border);
+    border-radius: 8px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5px 6px;
+    position: relative;
+    flex-shrink: 0;
+    transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  }
+
+  .card.red {
+    color: var(--red-suit);
+  }
+
+  .card.black {
+    color: var(--black-suit);
+  }
+
+  .card.joker-colored {
+    background: linear-gradient(135deg, #fffbeb 0%, #fee2e2 100%);
+    color: #dc2626;
+    border-color: #f87171;
+  }
+
+  .card.joker-black {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+
+  .card-corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.05;
+    font-weight: 800;
+    font-size: 0.88rem;
+    width: fit-content;
+  }
+
+  .card-center-suit {
+    font-size: 1.55rem;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .card-joker-label {
+    font-size: 0.76rem;
+    font-weight: 800;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 1px;
+    margin: auto;
+  }
+
+  /* Human Player Hand Area */
+  .human-area {
+    background: var(--bg-panel);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .human-area.active-turn {
+    border-color: var(--accent);
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.4);
+  }
+
+  .human-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .human-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .validation-msg {
+    font-size: 0.85rem;
+    color: #fca5a5;
+    min-height: 20px;
+    text-align: center;
+  }
+
+  .validation-msg.valid {
+    color: #86efac;
+  }
+
+  .hand-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    min-height: 116px;
+    padding: 16px 8px 4px;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .hand-card {
+    cursor: pointer;
+  }
+
+  .hand-card:hover {
+    transform: translateY(-8px);
+    z-index: 30 !important;
+  }
+
+  .hand-card.selected {
+    transform: translateY(-18px);
+    border: 2px solid var(--accent);
+    box-shadow: 0 8px 16px rgba(245, 158, 11, 0.5);
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+
+  .modal-backdrop.open {
+    display: flex;
+  }
+
+  .modal-box {
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px 24px;
+    line-height: 1.6;
+  }
+
+  .modal-box h2 {
+    margin-top: 0;
+    color: #fde68a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 8px;
+  }
+
+  .modal-box h3 {
+    color: #93c5fd;
+    margin: 14px 0 6px;
+    font-size: 1rem;
+  }
+
+  .modal-box ul {
+    margin: 4px 0 10px;
+    padding-left: 20px;
+    font-size: 0.92rem;
+  }
+
+  /* Game Over Banner */
+  .gameover-overlay {
+    background: rgba(15, 23, 42, 0.95);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px 22px;
+    text-align: center;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .gameover-overlay h2 {
+    margin: 0 0 8px;
+    color: #fde68a;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-area">
+    <h1>🃏 争上游（Chinese Poker）</h1>
+    <span class="badge" id="modeBadge">4人局</span>
+  </div>
+  <div class="controls">
+    <label for="playerCountSelect" style="font-size:0.85rem;color:#cbd5e1;">人数：</label>
+    <select id="playerCountSelect">
+      <option value="3">3人局（每人18张）</option>
+      <option value="4" selected>4人局（14/13张）</option>
+    </select>
+
+    <label for="speedSelect" style="font-size:0.85rem;color:#cbd5e1;">电脑速度：</label>
+    <select id="speedSelect">
+      <option value="1100">慢速</option>
+      <option value="650" selected>正常</option>
+      <option value="250">快速</option>
+    </select>
+
+    <button class="btn-secondary" id="rulesBtn">📖 游戏规则</button>
+    <button class="btn-primary" id="newGameBtn">🔄 重新发牌</button>
+  </div>
+</header>
+
+<main>
+  <!-- AI Opponents -->
+  <div class="opponents-row" id="opponentsRow"></div>
+
+  <!-- Center Table -->
+  <div class="table-center">
+    <div class="status-banner" id="statusBanner">正在初始化牌局...</div>
+    <div class="table-play-info" id="tablePlayInfo">桌面暂无出牌</div>
+    <div class="played-cards-area" id="playedCardsArea"></div>
+    <div id="gameOverBox"></div>
+  </div>
+
+  <!-- Human Player -->
+  <div class="human-area" id="humanArea">
+    <div class="human-header">
+      <div class="player-name" style="margin:0;">
+        <span id="humanName">玩家 1（你）</span>
+        <span id="humanBadges"></span>
+        <span class="badge" id="humanCountBadge">剩余 0 张</span>
+      </div>
+      <div class="human-actions">
+        <button class="btn-secondary" id="hintBtn">💡 出牌提示</button>
+        <button class="btn-secondary" id="clearSelBtn">清除选中</button>
+        <button class="btn-danger" id="passBtn">不出（过牌）</button>
+        <button class="btn-primary" id="playBtn">出牌</button>
+      </div>
+    </div>
+    <div class="validation-msg" id="validationMsg"></div>
+    <div class="hand-container" id="humanHand"></div>
+  </div>
+</main>
+
+<!-- Rules Modal -->
+<div class="modal-backdrop" id="rulesModal">
+  <div class="modal-box">
+    <h2>📖 争上游（Chinese Poker）官方规则说明</h2>
+    <h3>1. 牌组与发牌</h3>
+    <ul>
+      <li>使用完整 <strong>54 张扑克牌</strong>（52张常规牌 + 大王、小王）。</li>
+      <li><strong>3人局</strong>：每人发 18 张牌；<strong>4人局</strong>：两人各 14 张，两人各 13 张。</li>
+      <li>花色不参与大小比较，仅 <strong>红桃3（♥3）</strong> 持有者负责首轮先出牌（首手必须包含红桃3）。</li>
+    </ul>
+    <h3>2. 牌点大小（从大到小）</h3>
+    <ul>
+      <li><strong>大王 &gt; 小王 &gt; 2 &gt; A &gt; K &gt; Q &gt; J &gt; 10 &gt; 9 &gt; 8 &gt; 7 &gt; 6 &gt; 5 &gt; 4 &gt; 3</strong></li>
+    </ul>
+    <h3>3. 合法牌型</h3>
+    <ul>
+      <li><strong>单张</strong>：任意 1 张牌。</li>
+      <li><strong>对子</strong>：2 张相同点数的牌（大小王不可组成对子）。</li>
+      <li><strong>三张（三带零 / 三带一）</strong>：3 张相同点数的牌，可额外<strong>任选 1 张牌</strong>作为附带弃牌同时打出（比大小仅看三张本身）。</li>
+      <li><strong>四张（炸弹带零 / 四带二）</strong>：4 张相同点数的牌，可额外<strong>任选 2 张牌</strong>作为附带弃牌同时打出（比大小仅看四张本身）。</li>
+      <li><strong>顺子</strong>：点数连续的单牌序列（不可包含 <strong>2</strong> 或 <strong>大小王</strong>，最大到 A）。3人局至少 <strong>7 张</strong>；4人局至少 <strong>5 张</strong>。</li>
+      <li><strong>连对</strong>：相邻点数的对子序列（不可包含 <strong>2</strong> 或 <strong>大小王</strong>）。3人局必须为 <strong>3 连对</strong>（6张）；4人局必须为 <strong>2 连对</strong>（4张）。</li>
+    </ul>
+    <h3>4. 出牌与必出规则</h3>
+    <ul>
+      <li>按顺时针轮流出牌。下家必须打出<strong>牌型相同、总张数相同且主牌点数严格更大</strong>的牌。</li>
+      <li><strong>有牌必出</strong>：只要手中有合法且能大过桌面的牌，<strong>必须出牌</strong>，不允许故意不出（过牌）。</li>
+      <li><strong>绝杀自动收轮</strong>：当打出绝对无法被压制的牌型（如大王、小王[大王已出时]、对2、三张2、四张2、或到A封顶的顺子/连对）时，本轮直接结束并由出牌者继续领出下一轮。</li>
+    </ul>
+    <h3>5. 胜负与尾牌惩罚</h3>
+    <ul>
+      <li><strong>单张收尾限制</strong>：手中的<strong>最后 1 张牌必须以单张形式打出</strong>。不能通过多张牌型（对子、顺子等）或作为三带一/四带二的附带弃牌打完最后一手。</li>
+      <li><strong>大牌憋死判负</strong>：当玩家手牌只剩 <strong>1 张</strong> 且该牌为 <strong>2、小王或大王</strong> 时，该玩家立即<strong>出局判负</strong>（亮出底牌并退出本局，由其下家作为新领出者继续游戏）。</li>
+      <li>首位合法打完所有手牌的玩家获胜！</li>
+    </ul>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="btn-primary" id="closeRulesBtn">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // Rank values: 3=3 ... 10=10, J=11, Q=12, K=13, A=14, 2=15, Black Joker=16, Colored Joker=17
+  const RANKS = [
+    { val: 3, label: '3' },
+    { val: 4, label: '4' },
+    { val: 5, label: '5' },
+    { val: 6, label: '6' },
+    { val: 7, label: '7' },
+    { val: 8, label: '8' },
+    { val: 9, label: '9' },
+    { val: 10, label: '10' },
+    { val: 11, label: 'J' },
+    { val: 12, label: 'Q' },
+    { val: 13, label: 'K' },
+    { val: 14, label: 'A' },
+    { val: 15, label: '2' },
+    { val: 16, label: '小王' },
+    { val: 17, label: '大王' }
+  ];
+
+  const SUITS = [
+    { id: 'Hearts', symbol: '♥', color: 'red', name: '红桃' },
+    { id: 'Diamonds', symbol: '♦', color: 'red', name: '方块' },
+    { id: 'Clubs', symbol: '♣', color: 'black', name: '梅花' },
+    { id: 'Spades', symbol: '♠', color: 'black', name: '黑桃' }
+  ];
+
+  const TYPE_NAMES = {
+    single: '单张',
+    pair: '对子',
+    triple: '三张',
+    quad: '四张',
+    run: '顺子',
+    consec_pairs: '连对'
+  };
+
+  let state = {
+    playerCount: 4,
+    players: [],
+    currentTurn: 0,
+    leaderIndex: 0,
+    tablePlay: null, // { type, count, mainRank, mainCards, discardCards, playerIndex }
+    selectedIds: new Set(),
+    isFirstPlayOfGame: true,
+    gameOver: false,
+    winnerIndex: null,
+    playedHistory: [], // all cards played so far
+    aiTimer: null
+  };
+
+  function getRankLabel(val) {
+    const found = RANKS.find(r => r.val === val);
+    return found ? found.label : String(val);
+  }
+
+  function createDeck() {
+    const deck = [];
+    let idCounter = 1;
+    for (let r = 3; r <= 15; r++) {
+      for (const s of SUITS) {
+        deck.push({
+          id: 'c_' + (idCounter++),
+          rank: r,
+          label: getRankLabel(r),
+          suit: s.id,
+          suitSymbol: s.symbol,
+          suitName: s.name,
+          color: s.color,
+          isJoker: false,
+          isThreeOfHearts: (r === 3 && s.id === 'Hearts')
+        });
+      }
+    }
+    deck.push({
+      id: 'c_' + (idCounter++),
+      rank: 16,
+      label: '小王',
+      suit: 'Joker',
+      suitSymbol: '🃏',
+      suitName: '',
+      color: 'black',
+      isJoker: true,
+      jokerType: 'black',
+      isThreeOfHearts: false
+    });
+    deck.push({
+      id: 'c_' + (idCounter++),
+      rank: 17,
+      label: '大王',
+      suit: 'Joker',
+      suitSymbol: '🃏',
+      suitName: '',
+      color: 'red',
+      isJoker: true,
+      jokerType: 'colored',
+      isThreeOfHearts: false
+    });
+    return deck;
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function sortHand(hand) {
+    return hand.sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return a.suit.localeCompare(b.suit);
+    });
+  }
+
+  function startNewGame() {
+    if (state.aiTimer) {
+      clearTimeout(state.aiTimer);
+      state.aiTimer = null;
+    }
+
+    const pCount = parseInt(document.getElementById('playerCountSelect').value, 10);
+    state.playerCount = pCount;
+    state.players = [];
+    for (let i = 0; i < pCount; i++) {
+      state.players.push({
+        index: i,
+        name: i === 0 ? '玩家 1（你）' : `电脑 ${i}`,
+        isHuman: i === 0,
+        hand: [],
+        disqualified: false,
+        lastAction: '等待开局'
+      });
+    }
+
+    const deck = shuffle(createDeck());
+    // Deal evenly starting randomly
+    const startDeal = Math.floor(Math.random() * pCount);
+    deck.forEach((card, idx) => {
+      const target = (startDeal + idx) % pCount;
+      state.players[target].hand.push(card);
+    });
+
+    let starter = 0;
+    state.players.forEach(p => {
+      sortHand(p.hand);
+      if (p.hand.some(c => c.isThreeOfHearts)) {
+        starter = p.index;
+      }
+    });
+
+    state.currentTurn = starter;
+    state.leaderIndex = starter;
+    state.tablePlay = null;
+    state.selectedIds.clear();
+    state.isFirstPlayOfGame = true;
+    state.gameOver = false;
+    state.winnerIndex = null;
+    state.playedHistory = [];
+
+    document.getElementById('modeBadge').textContent = `${pCount}人局`;
+    document.getElementById('gameOverBox').innerHTML = '';
+
+    setStatus(`牌局开始！${state.players[starter].name} 持有红桃3（♥3），率先出牌。`);
+    renderAll();
+
+    if (!state.players[state.currentTurn].isHuman) {
+      scheduleAiTurn();
+    }
+  }
+
+  function setStatus(msg) {
+    document.getElementById('statusBanner').textContent = msg;
+  }
+
+  // Evaluate a chosen set of cards into valid combination(s)
+  function evaluateSelection(cards, playerCount) {
+    const n = cards.length;
+    if (n === 0) return null;
+
+    const sorted = [...cards].sort((a, b) => a.rank - b.rank);
+    const counts = new Map();
+    for (const c of sorted) {
+      counts.set(c.rank, (counts.get(c.rank) || 0) + 1);
+    }
+
+    // 1. Single
+    if (n === 1) {
+      return {
+        type: 'single',
+        count: 1,
+        mainRank: sorted[0].rank,
+        mainCards: sorted,
+        discardCards: []
+      };
+    }
+
+    // 2. Pair (no jokers allowed)
+    if (n === 2) {
+      if (counts.size === 1 && !sorted[0].isJoker) {
+        return {
+          type: 'pair',
+          count: 2,
+          mainRank: sorted[0].rank,
+          mainCards: sorted,
+          discardCards: []
+        };
+      }
+      return null;
+    }
+
+    // 3. Triple (3 cards) or Triple + 1 discard (4 cards)
+    if (n === 3 || n === 4) {
+      for (const [rank, cnt] of counts.entries()) {
+        if (cnt === 3 && rank <= 15) {
+          const mainCards = sorted.filter(c => c.rank === rank);
+          const discardCards = sorted.filter(c => c.rank !== rank);
+          return {
+            type: 'triple',
+            count: n,
+            mainRank: rank,
+            mainCards,
+            discardCards
+          };
+        }
+      }
+    }
+
+    // 4. Quadruple (4, 5, or 6 cards: 4 of a kind + 0, 1, or 2 discards)
+    if (n >= 4 && n <= 6) {
+      for (const [rank, cnt] of counts.entries()) {
+        if (cnt === 4 && rank <= 15) {
+          const mainCards = sorted.filter(c => c.rank === rank);
+          const discardCards = sorted.filter(c => c.rank !== rank);
+          return {
+            type: 'quad',
+            count: n,
+            mainRank: rank,
+            mainCards,
+            discardCards
+          };
+        }
+      }
+    }
+
+    // 5. Run: at least 7 cards (3 players) or 5 cards (4+ players); no 2s (15) or Jokers (16, 17)
+    const minRunLen = playerCount === 3 ? 7 : 5;
+    if (n >= minRunLen && counts.size === n) {
+      const minR = sorted[0].rank;
+      const maxR = sorted[n - 1].rank;
+      if (maxR <= 14 && (maxR - minR === n - 1)) {
+        return {
+          type: 'run',
+          count: n,
+          mainRank: maxR,
+          mainCards: sorted,
+          discardCards: []
+        };
+      }
+    }
+
+    // 6. Consecutive Pairs: 3 pairs (6 cards) for 3 players, 2 pairs (4 cards) for 4+ players; no 2s or Jokers
+    const reqPairs = playerCount === 3 ? 3 : 2;
+    if (n === reqPairs * 2 && counts.size === reqPairs) {
+      const ranks = Array.from(counts.keys()).sort((a, b) => a - b);
+      const allPairs = ranks.every(r => counts.get(r) === 2);
+      const maxR = ranks[ranks.length - 1];
+      const minR = ranks[0];
+      if (allPairs && maxR <= 14 && (maxR - minR === reqPairs - 1)) {
+        return {
+          type: 'consec_pairs',
+          count: n,
+          mainRank: maxR,
+          mainCards: sorted,
+          discardCards: []
+        };
+      }
+    }
+
+    return null;
+  }
+
+  // Validate if a play is strictly legal in the current state
+  function validatePlay(player, cards) {
+    if (!cards || cards.length === 0) {
+      return { ok: false, reason: '请先选择要打出的牌。' };
+    }
+
+    const combo = evaluateSelection(cards, state.playerCount);
+    if (!combo) {
+      return { ok: false, reason: '所选牌型不合法（不符合单张、对子、三带、四带、顺子或连对规则）。' };
+    }
+
+    // Rule: First play of the game must include 3 of Hearts
+    if (state.isFirstPlayOfGame) {
+      if (!cards.some(c => c.isThreeOfHearts)) {
+        return { ok: false, reason: '首轮首手出牌必须包含红桃3（♥3）。' };
+      }
+    }
+
+    // Rule (h): Last card in hand MUST be played as a Single
+    const remainingAfter = player.hand.length - cards.length;
+    if (remainingAfter === 0 && cards.length > 1) {
+      return { ok: false, reason: '最后 1 张手牌必须以【单张】形式打出，不能通过多张牌型或附带弃牌一起出完。' };
+    }
+
+    // Check against current tablePlay
+    if (state.tablePlay && state.tablePlay.playerIndex !== player.index) {
+      const tp = state.tablePlay;
+      if (combo.type !== tp.type || combo.count !== tp.count) {
+        return {
+          ok: false,
+          reason: `必须打出与桌面相同的牌型和总张数（当前需要：${tp.count}张【${TYPE_NAMES[tp.type]}】）。`
+        };
+      }
+      if (combo.mainRank <= tp.mainRank) {
+        return {
+          ok: false,
+          reason: `点数必须严格大于桌面的【${getRankLabel(tp.mainRank)}】。`
+        };
+      }
+    }
+
+    return { ok: true, combo };
+  }
+
+  // Generate all legal plays for a player given current tablePlay
+  function findAllLegalPlays(player) {
+    const hand = player.hand;
+    const pCount = state.playerCount;
+    const tp = (state.tablePlay && state.tablePlay.playerIndex !== player.index) ? state.tablePlay : null;
+    const results = [];
+
+    // Helper to check & push
+    const tryAdd = (cards) => {
+      const res = validatePlay(player, cards);
+      if (res.ok) results.push(res.combo);
+    };
+
+    // Group cards by rank
+    const byRank = new Map();
+    for (const c of hand) {
+      if (!byRank.has(c.rank)) byRank.set(c.rank, []);
+      byRank.get(c.rank).push(c);
+    }
+    const ranks = Array.from(byRank.keys()).sort((a, b) => a - b);
+
+    // 1. Singles
+    if (!tp || (tp.type === 'single' && tp.count === 1)) {
+      for (const c of hand) {
+        tryAdd([c]);
+      }
+    }
+
+    // 2. Pairs
+    if (!tp || (tp.type === 'pair' && tp.count === 2)) {
+      for (const r of ranks) {
+        if (r <= 15 && byRank.get(r).length >= 2) {
+          tryAdd(byRank.get(r).slice(0, 2));
+        }
+      }
+    }
+
+    // 3. Triples (with 0 or 1 discard)
+    if (!tp || tp.type === 'triple') {
+      for (const r of ranks) {
+        if (r <= 15 && byRank.get(r).length >= 3) {
+          const trip = byRank.get(r).slice(0, 3);
+          if (!tp || tp.count === 3) {
+            tryAdd(trip);
+          }
+          if (!tp || tp.count === 4) {
+            for (const c of hand) {
+              if (c.rank !== r) {
+                tryAdd([...trip, c]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Quadruples (with 0, 1, or 2 discards)
+    if (!tp || tp.type === 'quad') {
+      for (const r of ranks) {
+        if (r <= 15 && byRank.get(r).length === 4) {
+          const quad = byRank.get(r).slice(0, 4);
+          if (!tp || tp.count === 4) {
+            tryAdd(quad);
+          }
+          const others = hand.filter(c => c.rank !== r);
+          if (!tp || tp.count === 5) {
+            for (let i = 0; i < others.length; i++) {
+              tryAdd([...quad, others[i]]);
+            }
+          }
+          if (!tp || tp.count === 6) {
+            for (let i = 0; i < others.length; i++) {
+              for (let j = i + 1; j < others.length; j++) {
+                tryAdd([...quad, others[i], others[j]]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Runs
+    const minRunLen = pCount === 3 ? 7 : 5;
+    if (!tp || tp.type === 'run') {
+      const targetLen = tp ? tp.count : null;
+      const validRunRanks = ranks.filter(r => r <= 14);
+      for (let i = 0; i < validRunRanks.length; i++) {
+        const seq = [byRank.get(validRunRanks[i])[0]];
+        for (let j = i + 1; j < validRunRanks.length; j++) {
+          if (validRunRanks[j] === validRunRanks[j - 1] + 1) {
+            seq.push(byRank.get(validRunRanks[j])[0]);
+            if (targetLen) {
+              if (seq.length === targetLen) {
+                tryAdd([...seq]);
+                break;
+              }
+            } else if (seq.length >= minRunLen) {
+              tryAdd([...seq]);
+            }
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    // 6. Consecutive Pairs
+    const reqPairs = pCount === 3 ? 3 : 2;
+    const reqLen = reqPairs * 2;
+    if (!tp || (tp.type === 'consec_pairs' && tp.count === reqLen)) {
+      const pairRanks = ranks.filter(r => r <= 14 && byRank.get(r).length >= 2);
+      for (let i = 0; i <= pairRanks.length - reqPairs; i++) {
+        let okSeq = true;
+        const cards = [];
+        for (let k = 0; k < reqPairs; k++) {
+          if (pairRanks[i + k] !== pairRanks[i] + k) {
+            okSeq = false;
+            break;
+          }
+          cards.push(...byRank.get(pairRanks[i + k]).slice(0, 2));
+        }
+        if (okSeq) {
+          tryAdd(cards);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  // Check if a combo is completely unbeatable
+  function isUnbeatableCombo(combo) {
+    if (combo.type === 'single') {
+      if (combo.mainRank === 17) return true; // Colored Joker
+      if (combo.mainRank === 16) {
+        // Black Joker is unbeatable if Colored Joker was already played or is in a disqualified player's hand
+        const coloredGone = state.playedHistory.some(c => c.rank === 17) ||
+          state.players.some(p => p.disqualified && p.hand.some(c => c.rank === 17));
+        if (coloredGone) return true;
+      }
+    }
+    if (combo.type === 'pair' && combo.mainRank === 15) return true;
+    if (combo.type === 'triple' && combo.mainRank === 15) return true;
+    if (combo.type === 'quad' && combo.mainRank === 15) return true;
+    if (combo.type === 'run' && combo.mainRank === 14) return true;
+    if (combo.type === 'consec_pairs' && combo.mainRank === 14) return true;
+    return false;
+  }
+
+  function getNextActivePlayerIndex(fromIndex) {
+    for (let step = 1; step <= state.playerCount; step++) {
+      const idx = (fromIndex + step) % state.playerCount;
+      if (!state.players[idx].disqualified) {
+        return idx;
+      }
+    }
+    return fromIndex;
+  }
+
+  function countActivePlayers() {
+    return state.players.filter(p => !p.disqualified).length;
+  }
+
+  function executePlay(player, combo) {
+    const allPlayed = [...combo.mainCards, ...combo.discardCards];
+    const playedIds = new Set(allPlayed.map(c => c.id));
+
+    player.hand = player.hand.filter(c => !playedIds.has(c.id));
+    state.playedHistory.push(...allPlayed);
+    state.isFirstPlayOfGame = false;
+    state.leaderIndex = player.index;
+    state.tablePlay = {
+      ...combo,
+      playerIndex: player.index
+    };
+
+    if (player.isHuman) {
+      state.selectedIds.clear();
+    }
+
+    const discardText = combo.discardCards.length > 0
+      ? `（附带 ${combo.discardCards.map(c => c.label).join('、')}）`
+      : '';
+    const comboDesc = `${TYPE_NAMES[combo.type]} ${combo.mainCards.map(c => c.label).join('')}${discardText}`;
+    player.lastAction = `打出：${comboDesc}`;
+
+    // Check Win Condition (Rule l)
+    if (player.hand.length === 0) {
+      endGame(player.index, `${player.name} 率先出完所有手牌，获得胜利！`);
+      return;
+    }
+
+    // Check Disqualification Condition (Rule j): last card is 2 (15) or Joker (16, 17)
+    if (player.hand.length === 1 && player.hand[0].rank >= 15) {
+      const lastCard = player.hand[0];
+      player.disqualified = true;
+      player.lastAction = `剩单张【${lastCard.label}】，已出局判负！`;
+
+      if (countActivePlayers() <= 1) {
+        const soleSurvivor = state.players.find(p => !p.disqualified);
+        endGame(soleSurvivor.index, `其余玩家均因尾牌留大牌出局，${soleSurvivor.name} 获胜！`);
+        return;
+      }
+
+      const nextLeader = getNextActivePlayerIndex(player.index);
+      state.leaderIndex = nextLeader;
+      state.currentTurn = nextLeader;
+      state.tablePlay = null;
+      setStatus(`⚠️ ${player.name} 只剩单张【${lastCard.label}】被迫出局！由 ${state.players[nextLeader].name} 领出新一轮。`);
+      renderAll();
+      if (!state.players[state.currentTurn].isHuman) {
+        scheduleAiTurn();
+      }
+      return;
+    }
+
+    // Check Unbeatable Play -> Instant Round Win
+    if (isUnbeatableCombo(combo)) {
+      state.currentTurn = player.index;
+      state.tablePlay = null;
+      setStatus(`🔥 ${player.name} 打出绝杀牌型【${comboDesc}】，无人能管，直接赢得本轮并继续领出！`);
+      renderAll();
+      if (!player.isHuman) {
+        scheduleAiTurn();
+      }
+      return;
+    }
+
+    // Normal next turn
+    const nextIdx = getNextActivePlayerIndex(player.index);
+    state.currentTurn = nextIdx;
+    setStatus(`${player.name} 打出【${comboDesc}】。轮到 ${state.players[nextIdx].name} 出牌。`);
+    renderAll();
+
+    if (!state.players[nextIdx].isHuman) {
+      scheduleAiTurn();
+    }
+  }
+
+  function executePass(player) {
+    player.lastAction = '不出（过牌）';
+    const nextIdx = getNextActivePlayerIndex(player.index);
+
+    // If turn returns back to the current leader, leader wins the round!
+    if (nextIdx === state.leaderIndex) {
+      state.currentTurn = state.leaderIndex;
+      state.tablePlay = null;
+      const leader = state.players[state.leaderIndex];
+      setStatus(`所有其他玩家均不出，${leader.name} 赢得本轮，开始新一轮领出！`);
+      renderAll();
+      if (!leader.isHuman) {
+        scheduleAiTurn();
+      }
+      return;
+    }
+
+    state.currentTurn = nextIdx;
+    setStatus(`${player.name} 选择不出。轮到 ${state.players[nextIdx].name}。`);
+    renderAll();
+
+    if (!state.players[nextIdx].isHuman) {
+      scheduleAiTurn();
+    }
+  }
+
+  function endGame(winnerIdx, message) {
+    state.gameOver = true;
+    state.winnerIndex = winnerIdx;
+    if (state.aiTimer) {
+      clearTimeout(state.aiTimer);
+      state.aiTimer = null;
+    }
+    setStatus(`🏆 牌局结束！${message}`);
+    renderAll();
+  }
+
+  // AI Decision Engine
+  function chooseAiMove(player) {
+    const legalPlays = findAllLegalPlays(player);
+    if (legalPlays.length === 0) return null;
+
+    const isLeading = (!state.tablePlay || state.tablePlay.playerIndex === player.index);
+
+    // Helper: pick best lowest discards when leading or following with triple/quad
+    const scoreCombo = (c) => {
+      // Avoid throwing away 2s or Jokers as discards if possible
+      const discardPenalty = c.discardCards.reduce((sum, dc) => sum + (dc.rank >= 15 ? 50 : dc.rank), 0);
+      // Prefer getting rid of more cards when leading, while keeping low ranks first
+      const typeBonus = isLeading ? (c.mainCards.length * 12) : 0;
+      return c.mainRank * 10 + discardPenalty - typeBonus;
+    };
+
+    // If leading, prioritize multi-card combos (Runs, Consec Pairs, Quads+2, Triples+1, Pairs) over Singles
+    if (isLeading) {
+      const multi = legalPlays.filter(c => c.type !== 'single');
+      const pool = multi.length > 0 ? multi : legalPlays;
+      pool.sort((a, b) => scoreCombo(a) - scoreCombo(b));
+      return pool[0];
+    } else {
+      // Following: beat with lowest possible valid combination
+      legalPlays.sort((a, b) => scoreCombo(a) - scoreCombo(b));
+      return legalPlays[0];
+    }
+  }
+
+  function scheduleAiTurn() {
+    if (state.gameOver) return;
+    const delay = parseInt(document.getElementById('speedSelect').value, 10);
+    state.aiTimer = setTimeout(() => {
+      state.aiTimer = null;
+      if (state.gameOver) return;
+      const aiPlayer = state.players[state.currentTurn];
+      if (!aiPlayer || aiPlayer.isHuman || aiPlayer.disqualified) return;
+
+      const chosen = chooseAiMove(aiPlayer);
+      if (chosen) {
+        executePlay(aiPlayer, chosen);
+      } else {
+        executePass(aiPlayer);
+      }
+    }, delay);
+  }
+
+  // Rendering Functions
+  function createCardElement(card, selectable = false, isSelected = false) {
+    const el = document.createElement('div');
+    let cls = 'card ';
+    if (card.isJoker) {
+      cls += card.jokerType === 'colored' ? 'joker-colored' : 'joker-black';
+    } else {
+      cls += card.color;
+    }
+    if (selectable) cls += ' hand-card';
+    if (isSelected) cls += ' selected';
+    el.className = cls;
+
+    if (card.isJoker) {
+      el.innerHTML = `
+        <div class="card-corner"><span>★</span></div>
+        <div class="card-joker-label">${card.label}</div>
+        <div class="card-corner" style="align-self:flex-end;"><span>★</span></div>
+      `;
+    } else {
+      el.innerHTML = `
+        <div class="card-corner">
+          <span>${card.label}</span>
+          <span>${card.suitSymbol}</span>
+        </div>
+        <div class="card-center-suit">${card.suitSymbol}</div>
+      `;
+    }
+    return el;
+  }
+
+  function renderOpponents() {
+    const row = document.getElementById('opponentsRow');
+    row.innerHTML = '';
+
+    for (let i = 1; i < state.playerCount; i++) {
+      const p = state.players[i];
+      const box = document.createElement('div');
+      box.className = 'player-box';
+      if (!state.gameOver && state.currentTurn === p.index && !p.disqualified) {
+        box.classList.add('active-turn');
+      }
+      if (p.disqualified) {
+        box.classList.add('disqualified');
+      }
+
+      const badges = [];
+      if (state.leaderIndex === p.index && !p.disqualified) {
+        badges.push('<span class="leader-tag">领出</span>');
+      }
+      if (p.disqualified) {
+        badges.push('<span class="dq-tag">已出局</span>');
+      }
+
+      let miniHtml = '<div class="mini-cards">';
+      const showCount = Math.min(p.hand.length, 18);
+      for (let k = 0; k < showCount; k++) {
+        miniHtml += '<div class="mini-card-back"></div>';
+      }
+      miniHtml += '</div>';
+
+      // If game over or disqualified, reveal remaining cards
+      let revealHtml = '';
+      if ((state.gameOver || p.disqualified) && p.hand.length > 0) {
+        revealHtml = `<div style="font-size:0.78rem;color:#fca5a5;margin-top:4px;">余牌：${p.hand.map(c => c.suitSymbol + c.label).join(' ')}</div>`;
+      }
+
+      box.innerHTML = `
+        <div class="player-name">${p.name} ${badges.join(' ')}</div>
+        <div class="card-count">剩余 <strong>${p.hand.length}</strong> 张</div>
+        ${miniHtml}
+        <div class="last-action">${p.lastAction}</div>
+        ${revealHtml}
+      `;
+      row.appendChild(box);
+    }
+  }
+
+  function renderTable() {
+    const infoEl = document.getElementById('tablePlayInfo');
+    const areaEl = document.getElementById('playedCardsArea');
+    const goBox = document.getElementById('gameOverBox');
+
+    areaEl.innerHTML = '';
+    goBox.innerHTML = '';
+
+    if (!state.tablePlay) {
+      const leader = state.players[state.leaderIndex];
+      infoEl.textContent = state.gameOver
+        ? '本局已结束'
+        : `新一轮开始 — 等待 ${leader.name} 领出牌型`;
+    } else {
+      const tp = state.tablePlay;
+      const owner = state.players[tp.playerIndex];
+      infoEl.textContent = `当前桌面最大（${owner.name}）：${tp.count}张【${TYPE_NAMES[tp.type]}】（主牌点数：${getRankLabel(tp.mainRank)}）`;
+
+      tp.mainCards.forEach(c => {
+        areaEl.appendChild(createCardElement(c, false, false));
+      });
+
+      if (tp.discardCards.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'discard-divider';
+        div.innerHTML = '<span>附带弃牌：</span>';
+        tp.discardCards.forEach(c => {
+          div.appendChild(createCardElement(c, false, false));
+        });
+        areaEl.appendChild(div);
+      }
+    }
+
+    if (state.gameOver && state.winnerIndex !== null) {
+      const winner = state.players[state.winnerIndex];
+      goBox.innerHTML = `
+        <div class="gameover-overlay">
+          <h2>🏆 ${winner.name} 获胜！</h2>
+          <p style="margin:0 0 12px;font-size:0.92rem;color:#cbd5e1;">点击下方按钮可立即开始新一局游戏。</p>
+          <button class="btn-primary" onclick="document.getElementById('newGameBtn').click()">再来一局</button>
+        </div>
+      `;
+    }
+  }
+
+  function renderHuman() {
+    const human = state.players[0];
+    const area = document.getElementById('humanArea');
+    const badgesEl = document.getElementById('humanBadges');
+    const countBadge = document.getElementById('humanCountBadge');
+    const handEl = document.getElementById('humanHand');
+    const valMsg = document.getElementById('validationMsg');
+
+    const isMyTurn = (!state.gameOver && state.currentTurn === 0 && !human.disqualified);
+    area.classList.toggle('active-turn', isMyTurn);
+
+    const badges = [];
+    if (state.leaderIndex === 0 && !human.disqualified) {
+      badges.push('<span class="leader-tag">领出</span>');
+    }
+    if (human.disqualified) {
+      badges.push('<span class="dq-tag">已出局</span>');
+    }
+    badgesEl.innerHTML = badges.join(' ');
+    countBadge.textContent = `剩余 ${human.hand.length} 张`;
+
+    // Render Hand Cards with dynamic overlap so ALL cards fit cleanly without clipping
+    handEl.innerHTML = '';
+    const total = human.hand.length;
+    const containerWidth = handEl.clientWidth || Math.min(window.innerWidth - 60, 1100);
+    const cardWidth = 66;
+    let marginLeft = -22;
+    if (total > 1) {
+      const maxSpread = containerWidth - cardWidth - 16;
+      const idealStep = Math.floor(maxSpread / (total - 1));
+      const step = Math.max(22, Math.min(48, idealStep));
+      marginLeft = step - cardWidth;
+    }
+
+    human.hand.forEach((card, idx) => {
+      const isSel = state.selectedIds.has(card.id);
+      const cardEl = createCardElement(card, true, isSel);
+      if (idx > 0) {
+        cardEl.style.marginLeft = `${marginLeft}px`;
+      }
+      cardEl.style.zIndex = idx + 1;
+      cardEl.addEventListener('click', () => {
+        if (state.selectedIds.has(card.id)) {
+          state.selectedIds.delete(card.id);
+        } else {
+          state.selectedIds.add(card.id);
+        }
+        renderHuman();
+      });
+      handEl.appendChild(cardEl);
+    });
+
+    // Buttons & Validation Feedback
+    const playBtn = document.getElementById('playBtn');
+    const passBtn = document.getElementById('passBtn');
+    const hintBtn = document.getElementById('hintBtn');
+    const clearSelBtn = document.getElementById('clearSelBtn');
+
+    clearSelBtn.disabled = (state.selectedIds.size === 0);
+
+    if (!isMyTurn) {
+      playBtn.disabled = true;
+      passBtn.disabled = true;
+      hintBtn.disabled = true;
+      valMsg.className = 'validation-msg';
+      if (human.disqualified) {
+        valMsg.textContent = '你因最后一张手牌留有 2 或大小王已出局，正在观战剩余玩家...';
+      } else if (state.gameOver) {
+        valMsg.textContent = '本局已结束。';
+      } else {
+        valMsg.textContent = `等待 ${state.players[state.currentTurn].name} 思考出牌...`;
+      }
+      return;
+    }
+
+    hintBtn.disabled = false;
+    const legalPlays = findAllLegalPlays(human);
+    const isLeading = (!state.tablePlay || state.tablePlay.playerIndex === 0);
+
+    // Mandatory play rule: can only pass if NOT leading AND legalPlays.length === 0
+    passBtn.disabled = isLeading || (legalPlays.length > 0);
+
+    const selectedCards = human.hand.filter(c => state.selectedIds.has(c.id));
+    if (selectedCards.length === 0) {
+      playBtn.disabled = true;
+      valMsg.className = 'validation-msg';
+      if (isLeading) {
+        valMsg.textContent = state.isFirstPlayOfGame
+          ? '轮到你首发！请选择包含【红桃3】的合法牌型打出。'
+          : '轮到你领出！请选择任意合法牌型开始新一轮。';
+      } else if (legalPlays.length === 0) {
+        valMsg.textContent = '你手中没有能大过桌面的牌，请点击【不出（过牌）】。';
+      } else {
+        valMsg.textContent = '轮到你出牌（有牌必出），请选择能大过桌面的牌型。';
+      }
+    } else {
+      const check = validatePlay(human, selectedCards);
+      if (check.ok) {
+        playBtn.disabled = false;
+        valMsg.className = 'validation-msg valid';
+        const c = check.combo;
+        const disc = c.discardCards.length > 0 ? ` + ${c.discardCards.length}张附带弃牌` : '';
+        valMsg.textContent = `✔ 合法牌型：【${TYPE_NAMES[c.type]}】（主牌点数 ${getRankLabel(c.mainRank)}${disc}）`;
+      } else {
+        playBtn.disabled = true;
+        valMsg.className = 'validation-msg';
+        valMsg.textContent = `✖ ${check.reason}`;
+      }
+    }
+  }
+
+  function renderAll() {
+    renderOpponents();
+    renderTable();
+    renderHuman();
+  }
+
+  // Event Listeners
+  document.getElementById('newGameBtn').addEventListener('click', startNewGame);
+  document.getElementById('playerCountSelect').addEventListener('change', startNewGame);
+
+  document.getElementById('clearSelBtn').addEventListener('click', () => {
+    state.selectedIds.clear();
+    renderHuman();
+  });
+
+  document.getElementById('playBtn').addEventListener('click', () => {
+    const human = state.players[0];
+    if (state.gameOver || state.currentTurn !== 0 || human.disqualified) return;
+    const selectedCards = human.hand.filter(c => state.selectedIds.has(c.id));
+    const check = validatePlay(human, selectedCards);
+    if (check.ok) {
+      executePlay(human, check.combo);
+    }
+  });
+
+  document.getElementById('passBtn').addEventListener('click', () => {
+    const human = state.players[0];
+    if (state.gameOver || state.currentTurn !== 0 || human.disqualified) return;
+    const isLeading = (!state.tablePlay || state.tablePlay.playerIndex === 0);
+    if (isLeading) return;
+    const legalPlays = findAllLegalPlays(human);
+    if (legalPlays.length > 0) return;
+    state.selectedIds.clear();
+    executePass(human);
+  });
+
+  document.getElementById('hintBtn').addEventListener('click', () => {
+    const human = state.players[0];
+    if (state.gameOver || state.currentTurn !== 0 || human.disqualified) return;
+    const legalPlays = findAllLegalPlays(human);
+    if (legalPlays.length === 0) {
+      setStatus('提示：当前没有可出的牌，请点击【不出（过牌）】。');
+      return;
+    }
+    const suggestion = chooseAiMove(human) || legalPlays[0];
+    state.selectedIds.clear();
+    [...suggestion.mainCards, ...suggestion.discardCards].forEach(c => {
+      state.selectedIds.add(c.id);
+    });
+    renderHuman();
+  });
+
+  // Rules Modal
+  const rulesModal = document.getElementById('rulesModal');
+  document.getElementById('rulesBtn').addEventListener('click', () => {
+    rulesModal.classList.add('open');
+  });
+  document.getElementById('closeRulesBtn').addEventListener('click', () => {
+    rulesModal.classList.remove('open');
+  });
+  rulesModal.addEventListener('click', (e) => {
+    if (e.target === rulesModal) rulesModal.classList.remove('open');
+  });
+
+  window.addEventListener('resize', () => {
+    if (!state.gameOver) renderHuman();
+  });
+
+  // Boot
+  startNewGame();
+})();
+</script>
+</body>
+</html>
